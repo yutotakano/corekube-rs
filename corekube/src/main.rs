@@ -66,7 +66,7 @@ fn process_message(
     socket.send_to(&return_buf, src).unwrap();
 }
 
-fn ngap_handler_entrypoint(buf: &mut [u8]) -> [u8; 57] {
+fn ngap_handler_entrypoint(buf: &mut [u8]) -> &mut [u8] {
     // This is a placeholder for the NGAP handler
     println!("NGAP handler entrypoint");
     println!("NGAP: {:?}", buf);

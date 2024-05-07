@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-asn1-codecs = "0.6.1"
-asn1_codecs_derive = "0.6.1"
+asn1-codecs = { git = "https://github.com/ystero-dev/hampi.git" }
+asn1_codecs_derive = { git = "https://github.com/ystero-dev/hampi.git" }
 bitvec = "1.0.1"
 log = "0.4.21"
 

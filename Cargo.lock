@@ -63,8 +63,7 @@ dependencies = [
 [[package]]
 name = "asn1-codecs"
 version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e4ed1fe0647213e739f7ea78f50d3d0f6f9bef7285f6d8672aaca8365decfc3"
+source = "git+https://github.com/ystero-dev/hampi.git#b5ee967fc5c3ee4ae5005b343a5c318e6dd65876"
 dependencies = [
  "bitvec",
  "log",
@@ -93,8 +92,7 @@ dependencies = [
 [[package]]
 name = "asn1_codecs_derive"
 version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "394acf8791d3d345ed71e2e820355c9f8ad4202a99b97e59fb7b6595b18f28cd"
+source = "git+https://github.com/ystero-dev/hampi.git#b5ee967fc5c3ee4ae5005b343a5c318e6dd65876"
 dependencies = [
  "asn1-codecs",
  "bitvec",
