@@ -163,12 +163,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b6a852b24ab71dffc585bcb46eaf7959d175cb865a7152e35b348d1b2960422"
 
 [[package]]
-name = "corekube"
+name = "corekube-rs"
 version = "0.1.0"
 dependencies = [
  "asn1-codecs",
+ "asn1-compiler",
+ "asn1_codecs_derive",
+ "bitvec",
  "hex",
- "ngap_asn1",
+ "log",
 ]
 
 [[package]]
@@ -260,17 +263,6 @@ name = "memchr"
 version = "2.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c8640c5d730cb13ebd907d8d04b52f55ac9a2eec55b440c8892f40d56c76c1d"
-
-[[package]]
-name = "ngap_asn1"
-version = "0.1.0"
-dependencies = [
- "asn1-codecs",
- "asn1-compiler",
- "asn1_codecs_derive",
- "bitvec",
- "log",
-]
 
 [[package]]
 name = "proc-macro2"

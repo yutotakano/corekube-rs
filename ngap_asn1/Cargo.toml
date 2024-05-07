@@ -1,0 +1,13 @@
+[package]
+name = "ngap_asn1"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+asn1-codecs = "0.6.1"
+asn1_codecs_derive = "0.6.1"
+bitvec = "1.0.1"
+log = "0.4.21"
+
+[build-dependencies]
+asn1-compiler = "0.6.1"
