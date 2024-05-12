@@ -222,6 +222,7 @@ name = "corekube"
 version = "0.1.0"
 dependencies = [
  "asn1-codecs",
+ "bitvec",
  "flexi_logger",
  "hex",
  "log",
