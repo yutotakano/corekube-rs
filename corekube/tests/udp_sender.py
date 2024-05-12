@@ -16,7 +16,7 @@ def main():
         ready_to_read, _, _ = select.select([client], [], [], 1)
         if ready_to_read:
             data, addr = client.recvfrom(4096)
-            print(data.decode())
+            print(data)
             break
         else:
             continue
