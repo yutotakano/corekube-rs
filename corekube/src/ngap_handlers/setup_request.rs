@@ -2,7 +2,11 @@ use bitvec::prelude::*;
 use log::{error, trace};
 use ngap_asn1 as ngap;
 
-static COREKUBE_AMF_NAME: &str = "CoreKubeRS_5G_Worker";
+#[cfg(test)]
+mod tests;
+
+// static COREKUBE_AMF_NAME: &str = "CoreKubeRS_5G_Worker";
+static COREKUBE_AMF_NAME: &str = "open5gs-amf0";
 
 pub fn handle_setup_request(ng_setup: ngap::NGSetupRequest, responses: &mut Vec<ngap::NGAP_PDU>) {
     trace!("Handling NGAP message of type NGSetupRequest");
@@ -66,6 +70,28 @@ pub fn handle_setup_request(ng_setup: ngap::NGSetupRequest, responses: &mut Vec<
     responses.push(response);
 }
 
+fn build_plmn_identity() -> ngap::PLMNIdentity {
+    let mcc: u8 = 208;
+    let mnc = 93;
+
+    let mut mnc1 = mnc / 100;
+    if mnc1 == 0 {
+        mnc1 = 0x0f;
+    }
+    let mnc2 = (mnc / 10) % 10;
+    let mnc3 = mnc % 10;
+
+    let mcc1 = mcc / 100;
+    let mcc2 = (mcc / 10) % 10;
+    let mcc3 = mcc % 10;
+
+    ngap::PLMNIdentity(vec![mcc2 << 4 | mcc1, mnc1 << 4 | mcc3, mnc3 << 4 | mnc2])
+}
+
+fn build_amf_region_id() -> ngap::AMFRegionID {
+    ngap::AMFRegionID(bitvec![u8, Msb0; 0, 0, 0, 0, 0, 0, 1, 0])
+}
+
 fn build_setup_response() -> ngap::NGAP_PDU {
     trace!("Building NGSetupResponse");
 
@@ -89,10 +115,12 @@ fn build_setup_response() -> ngap::NGAP_PDU {
                             ngap::ServedGUAMIList {
                                 0: vec![ngap::ServedGUAMIItem {
                                     guami: ngap::GUAMI {
-                                        plmn_identity: ngap::PLMNIdentity(vec![2, 0, 8, 0, 9, 3]),
-                                        amf_region_id: ngap::AMFRegionID(bitvec![u8, Msb0; 2]),
-                                        amf_set_id: ngap::AMFSetID(bitvec![u8, Msb0; 0]),
-                                        amf_pointer: ngap::AMFPointer(bitvec![u8, Msb0; 0]),
+                                        plmn_identity: build_plmn_identity(),
+                                        amf_region_id: build_amf_region_id(),
+                                        amf_set_id: ngap::AMFSetID(
+                                            bitvec![u8, Msb0; 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                                        ),
+                                        amf_pointer: ngap::AMFPointer(bitvec![u8, Msb0; 0; 6]),
                                         ie_extensions: None,
                                     },
                                     backup_amf_name: None,
@@ -103,7 +131,7 @@ fn build_setup_response() -> ngap::NGAP_PDU {
                     },
                     ngap::NGSetupResponseProtocolIEs_Entry {
                         id: ngap::ProtocolIE_ID(ngap::ID_RELATIVE_AMF_CAPACITY),
-                        criticality: ngap::Criticality(ngap::Criticality::REJECT),
+                        criticality: ngap::Criticality(ngap::Criticality::IGNORE),
                         value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_RelativeAMFCapacity(
                             ngap::RelativeAMFCapacity(255),
                         ),
@@ -114,12 +142,12 @@ fn build_setup_response() -> ngap::NGAP_PDU {
                         value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_PLMNSupportList(
                             ngap::PLMNSupportList {
                                 0: vec![ngap::PLMNSupportItem {
-                                    plmn_identity: ngap::PLMNIdentity(vec![2, 0, 8, 0, 9, 3]),
+                                    plmn_identity: build_plmn_identity(),
                                     slice_support_list: ngap::SliceSupportList {
                                         0: vec![ngap::SliceSupportItem {
                                             s_nssai: ngap::S_NSSAI {
-                                                sst: ngap::SST(vec![0]),
-                                                sd: Some(ngap::SD(vec![0, 0, 0])),
+                                                sst: ngap::SST(vec![1]),
+                                                sd: None,
                                                 ie_extensions: None,
                                             },
                                             ie_extensions: None,

@@ -7,6 +7,9 @@ use std::thread;
 
 mod ngap_handlers;
 
+#[cfg(test)]
+mod tests;
+
 const BIND_ADDR: &str = "0.0.0.0";
 const BIND_PORT: u16 = 9977;
 const BUFFER_LEN: usize = 1024;
