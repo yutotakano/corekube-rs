@@ -9,3 +9,5 @@ edition = "2021"
 asn1-codecs = { git = "https://github.com/ystero-dev/hampi.git" }
 ngap_asn1 = { path = "../ngap_asn1" }
 hex = "0.4.3"
+flexi_logger = "0.28.0"
+log = "0.4.21"
