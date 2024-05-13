@@ -95,67 +95,59 @@ fn build_setup_response(config: &crate::config::CoreKubeConfig) -> ngap::NGAP_PD
         procedure_code: ngap::ProcedureCode(ngap::ID_NG_SETUP),
         criticality: ngap::Criticality(ngap::Criticality::REJECT),
         value: ngap::SuccessfulOutcomeValue::Id_NGSetup(ngap::NGSetupResponse {
-            protocol_i_es: ngap::NGSetupResponseProtocolIEs {
-                0: vec![
-                    ngap::NGSetupResponseProtocolIEs_Entry {
-                        id: ngap::ProtocolIE_ID(ngap::ID_AMF_NAME),
-                        criticality: ngap::Criticality(ngap::Criticality::REJECT),
-                        value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_AMFName(
-                            ngap::AMFName(config.amf_name.to_owned()),
-                        ),
-                    },
-                    ngap::NGSetupResponseProtocolIEs_Entry {
-                        id: ngap::ProtocolIE_ID(ngap::ID_SERVED_GUAMI_LIST),
-                        criticality: ngap::Criticality(ngap::Criticality::REJECT),
-                        value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_ServedGUAMIList(
-                            ngap::ServedGUAMIList {
-                                0: vec![ngap::ServedGUAMIItem {
-                                    guami: ngap::GUAMI {
-                                        plmn_identity: build_plmn_identity(config.mcc, config.mnc),
-                                        amf_region_id: ngap::AMFRegionID(
-                                            config.amf_region_id.clone(),
-                                        ),
-                                        amf_set_id: ngap::AMFSetID(config.amf_set_id.clone()),
-                                        amf_pointer: ngap::AMFPointer(config.amf_pointer.clone()),
+            protocol_i_es: ngap::NGSetupResponseProtocolIEs(vec![
+                ngap::NGSetupResponseProtocolIEs_Entry {
+                    id: ngap::ProtocolIE_ID(ngap::ID_AMF_NAME),
+                    criticality: ngap::Criticality(ngap::Criticality::REJECT),
+                    value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_AMFName(ngap::AMFName(
+                        config.amf_name.to_owned(),
+                    )),
+                },
+                ngap::NGSetupResponseProtocolIEs_Entry {
+                    id: ngap::ProtocolIE_ID(ngap::ID_SERVED_GUAMI_LIST),
+                    criticality: ngap::Criticality(ngap::Criticality::REJECT),
+                    value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_ServedGUAMIList(
+                        ngap::ServedGUAMIList(vec![ngap::ServedGUAMIItem {
+                            guami: ngap::GUAMI {
+                                plmn_identity: build_plmn_identity(config.mcc, config.mnc),
+                                amf_region_id: ngap::AMFRegionID(config.amf_region_id.clone()),
+                                amf_set_id: ngap::AMFSetID(config.amf_set_id.clone()),
+                                amf_pointer: ngap::AMFPointer(config.amf_pointer.clone()),
+                                ie_extensions: None,
+                            },
+                            backup_amf_name: None,
+                            ie_extensions: None,
+                        }]),
+                    ),
+                },
+                ngap::NGSetupResponseProtocolIEs_Entry {
+                    id: ngap::ProtocolIE_ID(ngap::ID_RELATIVE_AMF_CAPACITY),
+                    criticality: ngap::Criticality(ngap::Criticality::IGNORE),
+                    value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_RelativeAMFCapacity(
+                        ngap::RelativeAMFCapacity(config.relative_amf_capacity),
+                    ),
+                },
+                ngap::NGSetupResponseProtocolIEs_Entry {
+                    id: ngap::ProtocolIE_ID(ngap::ID_PLMN_SUPPORT_LIST),
+                    criticality: ngap::Criticality(ngap::Criticality::REJECT),
+                    value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_PLMNSupportList(
+                        ngap::PLMNSupportList(vec![ngap::PLMNSupportItem {
+                            plmn_identity: build_plmn_identity(config.mcc, config.mnc),
+                            slice_support_list: ngap::SliceSupportList(vec![
+                                ngap::SliceSupportItem {
+                                    s_nssai: ngap::S_NSSAI {
+                                        sst: ngap::SST(config.sst.clone()),
+                                        sd: None,
                                         ie_extensions: None,
                                     },
-                                    backup_amf_name: None,
                                     ie_extensions: None,
-                                }],
-                            },
-                        ),
-                    },
-                    ngap::NGSetupResponseProtocolIEs_Entry {
-                        id: ngap::ProtocolIE_ID(ngap::ID_RELATIVE_AMF_CAPACITY),
-                        criticality: ngap::Criticality(ngap::Criticality::IGNORE),
-                        value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_RelativeAMFCapacity(
-                            ngap::RelativeAMFCapacity(config.relative_amf_capacity),
-                        ),
-                    },
-                    ngap::NGSetupResponseProtocolIEs_Entry {
-                        id: ngap::ProtocolIE_ID(ngap::ID_PLMN_SUPPORT_LIST),
-                        criticality: ngap::Criticality(ngap::Criticality::REJECT),
-                        value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_PLMNSupportList(
-                            ngap::PLMNSupportList {
-                                0: vec![ngap::PLMNSupportItem {
-                                    plmn_identity: build_plmn_identity(config.mcc, config.mnc),
-                                    slice_support_list: ngap::SliceSupportList {
-                                        0: vec![ngap::SliceSupportItem {
-                                            s_nssai: ngap::S_NSSAI {
-                                                sst: ngap::SST(config.sst.clone()),
-                                                sd: None,
-                                                ie_extensions: None,
-                                            },
-                                            ie_extensions: None,
-                                        }],
-                                    },
-                                    ie_extensions: None,
-                                }],
-                            },
-                        ),
-                    },
-                ],
-            },
+                                },
+                            ]),
+                            ie_extensions: None,
+                        }]),
+                    ),
+                },
+            ]),
         }),
     })
 }
