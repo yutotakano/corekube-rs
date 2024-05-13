@@ -71,10 +71,7 @@ pub fn handle_setup_request(
     responses.push(response);
 }
 
-fn build_plmn_identity(config: &crate::config::CoreKubeConfig) -> ngap::PLMNIdentity {
-    let mcc: u8 = config.mcc;
-    let mnc = config.mnc;
-
+fn build_plmn_identity(mcc: u8, mnc: u8) -> ngap::PLMNIdentity {
     let mut mnc1 = mnc / 100;
     if mnc1 == 0 {
         mnc1 = 0x0f;
@@ -112,7 +109,7 @@ fn build_setup_response(config: &crate::config::CoreKubeConfig) -> ngap::NGAP_PD
                             ngap::ServedGUAMIList {
                                 0: vec![ngap::ServedGUAMIItem {
                                     guami: ngap::GUAMI {
-                                        plmn_identity: build_plmn_identity(config),
+                                        plmn_identity: build_plmn_identity(config.mcc, config.mnc),
                                         amf_region_id: ngap::AMFRegionID(
                                             config.amf_region_id.clone(),
                                         ),
@@ -139,7 +136,7 @@ fn build_setup_response(config: &crate::config::CoreKubeConfig) -> ngap::NGAP_PD
                         value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_PLMNSupportList(
                             ngap::PLMNSupportList {
                                 0: vec![ngap::PLMNSupportItem {
-                                    plmn_identity: build_plmn_identity(config),
+                                    plmn_identity: build_plmn_identity(config.mcc, config.mnc),
                                     slice_support_list: ngap::SliceSupportList {
                                         0: vec![ngap::SliceSupportItem {
                                             s_nssai: ngap::S_NSSAI {
