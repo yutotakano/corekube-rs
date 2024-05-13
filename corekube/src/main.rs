@@ -84,7 +84,7 @@ fn process_message(
 
     // Send the responses back to the client
     for mut return_buf in responses {
-        // Append the frontend ID to the return buffer
+        // Append the frontend ID and the SCTP stream ID to the response buffer
         let return_buf = [
             &mut *frontend_id,
             &mut vec![return_buf.sctp_stream],
@@ -120,6 +120,7 @@ fn ngap_handler_entrypoint(
         }
     };
 
+    // Encode each NGAP response to a ByteResponse using the APER codec
     let mut codec_data = PerCodecData::default();
     responses
         .iter()
@@ -130,7 +131,7 @@ fn ngap_handler_entrypoint(
             let buf = codec_data.get_inner().expect("Error getting inner buffer");
             ngap_handlers::ByteResponse {
                 sctp_stream: resp.sctp_stream,
-                buf: buf.to_vec(),
+                buf,
             }
         })
         .collect()
