@@ -3,17 +3,16 @@ use flexi_logger::Logger;
 use log::{debug, info, trace};
 use ngap_asn1 as ngap;
 use std::net::UdpSocket;
+use std::sync::Arc;
 use std::thread;
 
+mod config;
 mod ngap_handlers;
 
 #[cfg(test)]
 mod tests;
 
-const BIND_ADDR: &str = "0.0.0.0";
-const BIND_PORT: u16 = 9977;
 const BUFFER_LEN: usize = 1024;
-const MULTITHREAD: bool = true;
 
 fn main() {
     let _logger = Logger::try_with_env_or_str("info")
@@ -22,9 +21,13 @@ fn main() {
         .start()
         .expect("could not start logger");
 
+    // Load the default configuration. We wrap it in an atomic reference to
+    // allow sharing it between threads.
+    let config: Arc<config::CoreKubeConfig> = Arc::new(Default::default());
+
     info!("Running corekube-rs...");
-    info!("Listening on {}:{}", BIND_ADDR, BIND_PORT);
-    let socket = UdpSocket::bind((BIND_ADDR, BIND_PORT));
+    info!("Listening on {}:{}", config.bind_addr, config.bind_port);
+    let socket = UdpSocket::bind((config.bind_addr.as_str(), config.bind_port));
     let socket = match socket {
         Ok(s) => s,
         Err(e) => panic!("couldn't bind socket: {}", e),
@@ -39,19 +42,23 @@ fn main() {
         // Clone the socket to pass it to the thread
         let socket_clone = socket.try_clone().expect("couldn't clone the socket");
 
+        // Clone the reference to the config
+        let config = Arc::clone(&config);
+
         // Start a new thread for each received packet
-        if MULTITHREAD {
+        if config.multithreaded {
             thread::spawn(move || {
-                process_message(socket_clone, &mut buf, size, src);
+                process_message(&*config, socket_clone, &mut buf, size, src);
             });
         } else {
-            process_message(socket_clone, &mut buf, size, src);
+            process_message(&*config, socket_clone, &mut buf, size, src);
         }
     }
 }
 
 /// Handle the client UDP packet.
 fn process_message(
+    config: &config::CoreKubeConfig,
     socket: UdpSocket,
     buf: &mut [u8; BUFFER_LEN],
     size: usize,
@@ -71,7 +78,11 @@ fn process_message(
 
     // Create a slice of the first four bytes and the rest of the data
     let (frontend_id, buf) = buf.split_at_mut(4);
-    let return_bufs = ngap_handler_entrypoint(buf);
+    debug!("frontend_id: {:?}", frontend_id);
+
+    let return_bufs = ngap_handler_entrypoint(config, buf);
+
+    // Send the responses back to the client
     for mut return_buf in return_bufs {
         // Append the frontend ID to the return buffer
         let return_buf = [&mut *frontend_id, &mut return_buf].concat();
@@ -79,7 +90,7 @@ fn process_message(
     }
 }
 
-fn ngap_handler_entrypoint(buf: &[u8]) -> Vec<Vec<u8>> {
+fn ngap_handler_entrypoint(config: &config::CoreKubeConfig, buf: &[u8]) -> Vec<Vec<u8>> {
     // This is a placeholder for the NGAP handler
     trace!("NGAP handler entrypoint");
     debug!("NGAP: {:?}", buf);
@@ -90,7 +101,7 @@ fn ngap_handler_entrypoint(buf: &[u8]) -> Vec<Vec<u8>> {
 
     match ngap_pdu {
         ngap::NGAP_PDU::InitiatingMessage(init_msg) => {
-            ngap_initiating_message_handler(init_msg, &mut responses);
+            ngap_initiating_message_handler(config, init_msg, &mut responses);
         }
         ngap::NGAP_PDU::SuccessfulOutcome(success_outcome) => {
             info!("SuccessfulOutcome: {:?}", success_outcome);
@@ -112,6 +123,7 @@ fn ngap_handler_entrypoint(buf: &[u8]) -> Vec<Vec<u8>> {
 }
 
 fn ngap_initiating_message_handler(
+    config: &config::CoreKubeConfig,
     init_msg: ngap::InitiatingMessage,
     responses: &mut Vec<ngap::NGAP_PDU>,
 ) {
@@ -119,13 +131,13 @@ fn ngap_initiating_message_handler(
 
     match init_msg.value {
         ngap::InitiatingMessageValue::Id_NGSetup(ng_setup) => {
-            ngap_handlers::handle_setup_request(ng_setup, responses)
+            ngap_handlers::handle_setup_request(config, ng_setup, responses)
         }
         ngap::InitiatingMessageValue::Id_InitialUEMessage(ue_msg) => {
-            ngap_handlers::handle_initial_ue_message(ue_msg, responses)
+            ngap_handlers::handle_initial_ue_message(config, ue_msg, responses)
         }
         ngap::InitiatingMessageValue::Id_UplinkNASTransport(nas_transport) => {
-            ngap_handlers::handle_uplink_nas_transport(nas_transport, responses)
+            ngap_handlers::handle_uplink_nas_transport(config, nas_transport, responses)
         }
         unhandled => {
             info!("Unknown InitiatingMessage: {:?}", unhandled);

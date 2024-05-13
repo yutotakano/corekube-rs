@@ -1,14 +1,15 @@
 use bitvec::prelude::*;
-use log::{error, trace};
+use log::{debug, error, trace};
 use ngap_asn1 as ngap;
 
 #[cfg(test)]
 mod tests;
 
-// static COREKUBE_AMF_NAME: &str = "CoreKubeRS_5G_Worker";
-static COREKUBE_AMF_NAME: &str = "open5gs-amf0";
-
-pub fn handle_setup_request(ng_setup: ngap::NGSetupRequest, responses: &mut Vec<ngap::NGAP_PDU>) {
+pub fn handle_setup_request(
+    config: &crate::config::CoreKubeConfig,
+    ng_setup: ngap::NGSetupRequest,
+    responses: &mut Vec<ngap::NGAP_PDU>,
+) {
     trace!("Handling NGAP message of type NGSetupRequest");
 
     let mut global_ran_node_id = None;
@@ -43,36 +44,36 @@ pub fn handle_setup_request(ng_setup: ngap::NGSetupRequest, responses: &mut Vec<
         error!("Missing GlobalRANNodeID in NGSetupRequest");
         return;
     };
-    trace!("GlobalRANNodeID: {:?}", global_ran_node_id);
+    debug!("GlobalRANNodeID: {:?}", global_ran_node_id);
 
     let ngap::GlobalRANNodeID::GlobalGNB_ID(global_gnb_id) = global_ran_node_id else {
         error!("GlobalRANNodeID is not a GlobalGNB_ID");
         return;
     };
-    trace!("GlobalGNB_ID: {:?}", global_gnb_id);
+    debug!("GlobalGNB_ID: {:?}", global_gnb_id);
 
     let Some(supported_ta_list) = supported_ta_list else {
         error!("Missing SupportedTAList in NGSetupRequest");
         return;
     };
-    trace!("SupportedTAList: {:?}", supported_ta_list);
+    debug!("SupportedTAList: {:?}", supported_ta_list);
 
     let Some(paging_drx) = paging_drx else {
         error!("Missing DefaultPagingDRX in NGSetupRequest");
         return;
     };
-    trace!("DefaultPagingDRX: {:?}", paging_drx);
+    debug!("DefaultPagingDRX: {:?}", paging_drx);
 
     // TODO: Set SCTP stream ID to 0 here
 
     // Create the NGSetupResponse
-    let response = build_setup_response();
+    let response = build_setup_response(config);
     responses.push(response);
 }
 
-fn build_plmn_identity() -> ngap::PLMNIdentity {
-    let mcc: u8 = 208;
-    let mnc = 93;
+fn build_plmn_identity(config: &crate::config::CoreKubeConfig) -> ngap::PLMNIdentity {
+    let mcc: u8 = config.mcc;
+    let mnc = config.mnc;
 
     let mut mnc1 = mnc / 100;
     if mnc1 == 0 {
@@ -88,11 +89,7 @@ fn build_plmn_identity() -> ngap::PLMNIdentity {
     ngap::PLMNIdentity(vec![mcc2 << 4 | mcc1, mnc1 << 4 | mcc3, mnc3 << 4 | mnc2])
 }
 
-fn build_amf_region_id() -> ngap::AMFRegionID {
-    ngap::AMFRegionID(bitvec![u8, Msb0; 0, 0, 0, 0, 0, 0, 1, 0])
-}
-
-fn build_setup_response() -> ngap::NGAP_PDU {
+fn build_setup_response(config: &crate::config::CoreKubeConfig) -> ngap::NGAP_PDU {
     trace!("Building NGSetupResponse");
 
     ngap::NGAP_PDU::SuccessfulOutcome(ngap::SuccessfulOutcome {
@@ -105,7 +102,7 @@ fn build_setup_response() -> ngap::NGAP_PDU {
                         id: ngap::ProtocolIE_ID(ngap::ID_AMF_NAME),
                         criticality: ngap::Criticality(ngap::Criticality::REJECT),
                         value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_AMFName(
-                            ngap::AMFName(COREKUBE_AMF_NAME.to_owned()),
+                            ngap::AMFName(config.amf_name.to_owned()),
                         ),
                     },
                     ngap::NGSetupResponseProtocolIEs_Entry {
@@ -115,12 +112,12 @@ fn build_setup_response() -> ngap::NGAP_PDU {
                             ngap::ServedGUAMIList {
                                 0: vec![ngap::ServedGUAMIItem {
                                     guami: ngap::GUAMI {
-                                        plmn_identity: build_plmn_identity(),
-                                        amf_region_id: build_amf_region_id(),
-                                        amf_set_id: ngap::AMFSetID(
-                                            bitvec![u8, Msb0; 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                                        plmn_identity: build_plmn_identity(config),
+                                        amf_region_id: ngap::AMFRegionID(
+                                            config.amf_region_id.clone(),
                                         ),
-                                        amf_pointer: ngap::AMFPointer(bitvec![u8, Msb0; 0; 6]),
+                                        amf_set_id: ngap::AMFSetID(config.amf_set_id.clone()),
+                                        amf_pointer: ngap::AMFPointer(config.amf_pointer.clone()),
                                         ie_extensions: None,
                                     },
                                     backup_amf_name: None,
@@ -133,7 +130,7 @@ fn build_setup_response() -> ngap::NGAP_PDU {
                         id: ngap::ProtocolIE_ID(ngap::ID_RELATIVE_AMF_CAPACITY),
                         criticality: ngap::Criticality(ngap::Criticality::IGNORE),
                         value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_RelativeAMFCapacity(
-                            ngap::RelativeAMFCapacity(255),
+                            ngap::RelativeAMFCapacity(config.relative_amf_capacity),
                         ),
                     },
                     ngap::NGSetupResponseProtocolIEs_Entry {
@@ -142,11 +139,11 @@ fn build_setup_response() -> ngap::NGAP_PDU {
                         value: ngap::NGSetupResponseProtocolIEs_EntryValue::Id_PLMNSupportList(
                             ngap::PLMNSupportList {
                                 0: vec![ngap::PLMNSupportItem {
-                                    plmn_identity: build_plmn_identity(),
+                                    plmn_identity: build_plmn_identity(config),
                                     slice_support_list: ngap::SliceSupportList {
                                         0: vec![ngap::SliceSupportItem {
                                             s_nssai: ngap::S_NSSAI {
-                                                sst: ngap::SST(vec![1]),
+                                                sst: ngap::SST(config.sst.clone()),
                                                 sd: None,
                                                 ie_extensions: None,
                                             },

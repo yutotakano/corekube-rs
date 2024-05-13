@@ -5,6 +5,7 @@ use ngap_asn1 as ngap;
 mod tests;
 
 pub fn handle_initial_ue_message(
+    _config: &crate::config::CoreKubeConfig,
     _initial_ue_msg: ngap::InitialUEMessage,
     _responses: &mut Vec<ngap::NGAP_PDU>,
 ) {
