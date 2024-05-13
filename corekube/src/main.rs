@@ -80,44 +80,58 @@ fn process_message(
     let (frontend_id, buf) = buf.split_at_mut(4);
     debug!("frontend_id: {:?}", frontend_id);
 
-    let return_bufs = ngap_handler_entrypoint(config, buf);
+    let responses = ngap_handler_entrypoint(config, buf);
 
     // Send the responses back to the client
-    for mut return_buf in return_bufs {
+    for mut return_buf in responses {
         // Append the frontend ID to the return buffer
-        let return_buf = [&mut *frontend_id, &mut return_buf].concat();
+        let return_buf = [
+            &mut *frontend_id,
+            &mut vec![return_buf.sctp_stream],
+            &mut return_buf.buf,
+        ]
+        .concat();
         socket.send_to(&return_buf, src).unwrap();
     }
 }
 
-fn ngap_handler_entrypoint(config: &config::CoreKubeConfig, buf: &[u8]) -> Vec<Vec<u8>> {
+fn ngap_handler_entrypoint(
+    config: &config::CoreKubeConfig,
+    buf: &[u8],
+) -> Vec<ngap_handlers::ByteResponse> {
     // This is a placeholder for the NGAP handler
     trace!("NGAP handler entrypoint");
     debug!("NGAP: {:?}", buf);
 
     let mut codec_data = PerCodecData::from_slice_aper(&buf);
     let ngap_pdu = ngap::NGAP_PDU::aper_decode(&mut codec_data).expect("Error decoding NGAP PDU");
-    let mut responses = Vec::new();
 
-    match ngap_pdu {
+    let responses = match ngap_pdu {
         ngap::NGAP_PDU::InitiatingMessage(init_msg) => {
-            ngap_initiating_message_handler(config, init_msg, &mut responses);
+            ngap_initiating_message_handler(config, init_msg)
         }
         ngap::NGAP_PDU::SuccessfulOutcome(success_outcome) => {
             info!("SuccessfulOutcome: {:?}", success_outcome);
+            vec![]
         }
         ngap::NGAP_PDU::UnsuccessfulOutcome(unsuccess_outcome) => {
             info!("UnsuccessfulOutcome: {:?}", unsuccess_outcome);
+            vec![]
         }
-    }
+    };
 
     let mut codec_data = PerCodecData::default();
     responses
         .iter()
-        .map(|resp: &ngap::NGAP_PDU| {
-            resp.aper_encode(&mut codec_data)
+        .map(|resp| {
+            resp.ngap_pdu
+                .aper_encode(&mut codec_data)
                 .expect("Error encoding NGAP PDU");
-            codec_data.get_inner().expect("Error getting inner buffer")
+            let buf = codec_data.get_inner().expect("Error getting inner buffer");
+            ngap_handlers::ByteResponse {
+                sctp_stream: resp.sctp_stream,
+                buf: buf.to_vec(),
+            }
         })
         .collect()
 }
@@ -125,22 +139,22 @@ fn ngap_handler_entrypoint(config: &config::CoreKubeConfig, buf: &[u8]) -> Vec<V
 fn ngap_initiating_message_handler(
     config: &config::CoreKubeConfig,
     init_msg: ngap::InitiatingMessage,
-    responses: &mut Vec<ngap::NGAP_PDU>,
-) {
+) -> Vec<ngap_handlers::NGAPResponse> {
     trace!("Handling NGAP message of type InitiaingMessage");
 
     match init_msg.value {
         ngap::InitiatingMessageValue::Id_NGSetup(ng_setup) => {
-            ngap_handlers::handle_setup_request(config, ng_setup, responses)
+            ngap_handlers::handle_setup_request(config, ng_setup)
         }
         ngap::InitiatingMessageValue::Id_InitialUEMessage(ue_msg) => {
-            ngap_handlers::handle_initial_ue_message(config, ue_msg, responses)
+            ngap_handlers::handle_initial_ue_message(config, ue_msg)
         }
         ngap::InitiatingMessageValue::Id_UplinkNASTransport(nas_transport) => {
-            ngap_handlers::handle_uplink_nas_transport(config, nas_transport, responses)
+            ngap_handlers::handle_uplink_nas_transport(config, nas_transport)
         }
         unhandled => {
             info!("Unknown InitiatingMessage: {:?}", unhandled);
+            vec![]
         }
     }
 }

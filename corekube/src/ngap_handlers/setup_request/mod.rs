@@ -1,6 +1,7 @@
-use bitvec::prelude::*;
 use log::{debug, error, trace};
 use ngap_asn1 as ngap;
+
+use super::NGAPResponse;
 
 #[cfg(test)]
 mod tests;
@@ -8,8 +9,7 @@ mod tests;
 pub fn handle_setup_request(
     config: &crate::config::CoreKubeConfig,
     ng_setup: ngap::NGSetupRequest,
-    responses: &mut Vec<ngap::NGAP_PDU>,
-) {
+) -> Vec<NGAPResponse> {
     trace!("Handling NGAP message of type NGSetupRequest");
 
     let mut global_ran_node_id = None;
@@ -35,40 +35,42 @@ pub fn handle_setup_request(
                 paging_drx = Some(default_paging_drx_value);
             }
             _ => {
-                error!("Unhandled ProtocolIE in NGSetupRequest: {:?}", protocol_ie);
+                debug!("Ignored ProtocolIE in NGSetupRequest: {:?}", protocol_ie);
             }
         }
     }
 
     let Some(global_ran_node_id) = global_ran_node_id else {
         error!("Missing GlobalRANNodeID in NGSetupRequest");
-        return;
+        return vec![];
     };
     debug!("GlobalRANNodeID: {:?}", global_ran_node_id);
 
     let ngap::GlobalRANNodeID::GlobalGNB_ID(global_gnb_id) = global_ran_node_id else {
         error!("GlobalRANNodeID is not a GlobalGNB_ID");
-        return;
+        return vec![];
     };
     debug!("GlobalGNB_ID: {:?}", global_gnb_id);
 
     let Some(supported_ta_list) = supported_ta_list else {
         error!("Missing SupportedTAList in NGSetupRequest");
-        return;
+        return vec![];
     };
     debug!("SupportedTAList: {:?}", supported_ta_list);
 
     let Some(paging_drx) = paging_drx else {
         error!("Missing DefaultPagingDRX in NGSetupRequest");
-        return;
+        return vec![];
     };
     debug!("DefaultPagingDRX: {:?}", paging_drx);
 
-    // TODO: Set SCTP stream ID to 0 here
-
     // Create the NGSetupResponse
-    let response = build_setup_response(config);
-    responses.push(response);
+    let response = NGAPResponse {
+        sctp_stream: 0,
+        ngap_pdu: build_setup_response(config),
+    };
+
+    vec![response]
 }
 
 fn build_plmn_identity(mcc: u8, mnc: u8) -> ngap::PLMNIdentity {
